@@ -7,6 +7,14 @@ import { geminiService, ClassificationResult } from './gemini.service';
 
 export type ConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'QR_READY' | 'CONNECTED';
 
+const withTimeout = <T>(promise: Promise<T>, ms: number, fallbackErrorMsg: string): Promise<T> => {
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(fallbackErrorMsg)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+};
+
 class WhatsAppService {
   private client!: Client;
   private io!: Server;
@@ -206,7 +214,11 @@ class WhatsAppService {
         // Apply user's custom formatting fix
         targetJid = `${recipient.replace(/[^0-9]/g, '').replace(/^00/, '')}@c.us`;
         try {
-          const isRegistered = await this.client.isRegisteredUser(targetJid);
+          const isRegistered = await withTimeout(
+            this.client.isRegisteredUser(targetJid),
+            5000,
+            'isRegisteredUser timeout'
+          );
           if (!isRegistered) {
             console.warn(`Recipient JID is not registered on WhatsApp: ${targetJid}. Skipping.`);
             continue;
@@ -218,7 +230,7 @@ class WhatsAppService {
       }
 
       try {
-        await originalMessage.forward(targetJid);
+        await withTimeout(originalMessage.forward(targetJid), 10000, 'forward timeout');
         
         const details = classification.extractedDetails;
         const detailLines = [
@@ -239,7 +251,7 @@ ${detailLines ? '\n*Extrahiert:*\n' + detailLines : ''}
 
 🔗 _Antworte direkt in der Gruppe "${groupName}"._`;
 
-        await this.client.sendMessage(targetJid, summaryText);
+        await withTimeout(this.client.sendMessage(targetJid, summaryText), 10000, 'sendMessage timeout');
       } catch (forwardError) {
         console.error(`Failed to forward matched message to ${targetJid}:`, forwardError);
       }
@@ -282,7 +294,7 @@ ${detailLines ? '\n*Extrahiert:*\n' + detailLines : ''}
     } else if (!to.endsWith('@c.us')) {
       targetJid = `${to.replace(/[^0-9]/g, '').replace(/^00/, '')}@c.us`;
     }
-    await this.client.sendMessage(targetJid, text);
+    await withTimeout(this.client.sendMessage(targetJid, text), 10000, 'sendMessage timeout');
   }
 }
 
