@@ -1,6 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { CheckCircle2, ShieldAlert, Smartphone, Wifi, Loader2 } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, Smartphone, Loader2 } from 'lucide-react';
 
 interface WhatsAppConnectProps {
   whatsappStatus: {

@@ -12,6 +12,7 @@ interface SettingsData {
   criteria: string;
   notificationPhone: string;
   filterEnabled: boolean;
+  isApiKeyConfigured?: boolean;
 }
 
 interface WhatsAppStatus {
@@ -209,6 +210,7 @@ function App() {
         setActiveTab={setActiveTab}
         whatsappStatus={whatsappStatus}
         filterEnabled={settings.filterEnabled}
+        isApiKeyConfigured={!!settings.isApiKeyConfigured}
       />
 
       <main className="main-content">

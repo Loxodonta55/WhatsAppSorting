@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Send, Calendar, User, MessageSquare, Lightbulb, ExternalLink, Image as ImageIcon, Check, Loader2 } from 'lucide-react';
+import { Trash2, Send, Calendar, User, MessageSquare, Lightbulb, Image as ImageIcon, Check, Loader2 } from 'lucide-react';
 
 interface MatchedItem {
   id: string;

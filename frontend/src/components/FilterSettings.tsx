@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Save, AlertCircle, Play, CheckCircle2, XCircle, Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react';
+import { Save, AlertCircle, Play, CheckCircle2, XCircle, Image as ImageIcon, Loader2 } from 'lucide-react';
 
 interface SettingsData {
   geminiApiKey: string;
   criteria: string;
   notificationPhone: string;
   filterEnabled: boolean;
+  isApiKeyConfigured?: boolean;
 }
 
 interface FilterSettingsProps {
@@ -160,9 +161,16 @@ export const FilterSettings: React.FC<FilterSettingsProps> = ({ settings, onSave
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="geminiApiKey">
-              Gemini API Key
-            </label>
+            <div className="label-with-status">
+              <label className="form-label" htmlFor="geminiApiKey">
+                Gemini API Key
+              </label>
+              {settings.isApiKeyConfigured ? (
+                <span className="badge badge-success key-status-badge">Aktiv / Hinterlegt</span>
+              ) : (
+                <span className="badge badge-danger key-status-badge">Schlüssel fehlt</span>
+              )}
+            </div>
             <input
               id="geminiApiKey"
               name="geminiApiKey"
@@ -179,19 +187,19 @@ export const FilterSettings: React.FC<FilterSettingsProps> = ({ settings, onSave
 
           <div className="form-group">
             <label className="form-label" htmlFor="notificationPhone">
-              Weiterleitungs-Empfänger (WhatsApp)
+              Weiterleitungs-Empfänger (WhatsApp, mit Semikolon trennbar)
             </label>
             <input
               id="notificationPhone"
               name="notificationPhone"
               value={formData.notificationPhone}
               onChange={handleChange}
-              placeholder="Z.B. 'self' oder Telefonnummer mit Landesvorwahl (491701234567)"
+              placeholder="Z.B. 'self' oder 'self; 491701234567; 491707654321'"
               className="input-field"
               required
             />
             <span className="field-hint">
-              Wähle <strong>'self'</strong>, um Treffer an deinen eigenen WhatsApp-Chat ("Nachricht an dich selbst") zu senden, oder gib eine Nummer ein.
+              Gib <strong>'self'</strong> ein, um Treffer an deinen eigenen WhatsApp-Chat zu senden, oder gib eine oder mehrere Nummern mit Landesvorwahl (z. B. 491701234567) ein. Trenne mehrere Empfänger mit einem <strong>Semikolon (;)</strong>.
             </span>
           </div>
 
@@ -362,6 +370,16 @@ export const FilterSettings: React.FC<FilterSettingsProps> = ({ settings, onSave
         .section-desc {
           font-size: 0.9rem;
           margin-bottom: 1.5rem;
+        }
+        .label-with-status {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+        }
+        .key-status-badge {
+          font-size: 0.75rem;
+          padding: 0.15rem 0.5rem;
         }
         .settings-form, .playground-form {
           display: flex;

@@ -53,6 +53,20 @@ export async function sendDirectMessage(to: string, text: string) {
   await client.sendMessage(targetJid, text);
 }
 
+function isSalesOriented(text: string): boolean {
+  if (!text) return false;
+  const lowercase = text.toLowerCase();
+  const keywords = [
+    'biete', 'verkaufe', 'abzugeben', 'abzuholen', 'suche', 'vk', 'verschenke',
+    'preis', 'euro', '€', 'gr', 'größe', 'groesse', 'paket', 'set', 'kleidung',
+    'schuhe', 'spielzeug', 'wagen', 'sitz', 'bett', 'zustand', 'versand', 'abholung',
+    'flohmarkt', 'basar', 'trage', 'kleinkind', 'baby', 'monate', 'jahre', 'kauf',
+    'verkauf', 'neu', 'getragen', 'bereit', 'abgabe', 'jacke', 'hose', 'pulli',
+    'shirt', 'kleid', 'bodys', 'body', 'strampler', 'schlafsack'
+  ];
+  return keywords.some(keyword => lowercase.includes(keyword));
+}
+
 export function initWhatsApp(socketIo: Server) {
   io = socketIo;
   connectionStatus = 'CONNECTING';
@@ -138,6 +152,12 @@ export function initWhatsApp(socketIo: Server) {
       const settings = db.getSettings();
       if (!settings.filterEnabled) return;
 
+      // Skip messages that have no media and are not sales oriented (e.g. casual talk, "Danke")
+      if (!message.hasMedia && !isSalesOriented(message.body)) {
+        console.log(`Skipped message from group "${groupName}" (not sales oriented): "${message.body.substring(0, 45).replace(/\n/g, ' ')}..."`);
+        return;
+      }
+
       console.log(`Processing message from group "${groupName}" (${groupId})`);
 
       // 1. Download attachment if it exists and is an image
@@ -201,44 +221,45 @@ export function initWhatsApp(socketIo: Server) {
         // Emit to frontend in real-time
         io.emit('new_match', matchedItem);
 
-        // 3. Forward to user
-        let targetJid = client.info.wid._serialized; // Default to self-chat
-        if (settings.notificationPhone && settings.notificationPhone !== 'self') {
-          targetJid = `${settings.notificationPhone.replace(/[^0-9]/g, '')}@c.us`;
-        }
+        // 3. Forward to users (supports multiple recipients separated by semicolons)
+        const phoneInput = settings.notificationPhone || 'self';
+        const recipients = phoneInput.split(';').map(p => p.trim()).filter(Boolean);
 
-        const details = classification.extractedDetails;
-        const detailLines = [
-          details.item ? `• *Gegenstand:* ${details.item}` : null,
-          details.size ? `• *Größe:* ${details.size}` : null,
-          details.price ? `• *Preis:* ${details.price}` : null,
-          details.location ? `• *Ort/Versand:* ${details.location}` : null,
-          details.condition ? `• *Zustand:* ${details.condition}` : null,
-        ].filter(Boolean).join('\n');
+        for (const recipient of recipients) {
+          let targetJid = client.info.wid._serialized; // Default to self-chat
+          if (recipient !== 'self') {
+            targetJid = `${recipient.replace(/[^0-9]/g, '')}@c.us`;
+          }
 
-        const forwardText = `🌟 *Relevantes Angebot gefunden!*
+          try {
+            // Natively forward the original message (retains all original media, formatting, etc.)
+            await message.forward(targetJid);
+            console.log(`Original message forwarded successfully to ${targetJid}`);
 
-👥 *Gruppe:* ${groupName}
-👤 *Von:* ${senderName}
-📝 *Nachricht:* ${message.body || '[Kein Text - siehe Bild]'}
+            // Send follow-up AI summary analysis
+            const details = classification.extractedDetails;
+            const detailLines = [
+              details.item ? `• *Gegenstand:* ${details.item}` : null,
+              details.size ? `• *Größe:* ${details.size}` : null,
+              details.price ? `• *Preis:* ${details.price}` : null,
+              details.location ? `• *Ort/Versand:* ${details.location}` : null,
+              details.condition ? `• *Zustand:* ${details.condition}` : null,
+            ].filter(Boolean).join('\n');
 
-🔍 *Details:*
-${detailLines || '• Keine Details extrahiert'}
+            const summaryText = `💡 *Warum weitergeleitet?*
+• *Gruppe:* ${groupName}
+• *Von:* ${senderName}
+${detailLines ? '\n*Extrahiert:*\n' + detailLines : ''}
 
-💡 *Grund:* ${classification.reason}
+🔍 *KI-Begründung:* ${classification.reason}
 
 🔗 _Antworte direkt in der Gruppe "${groupName}"._`;
 
-        try {
-          if (imageBuffer && imageMimeType) {
-            const media = new MessageMedia(imageMimeType, imageBuffer.toString('base64'));
-            await client.sendMessage(targetJid, media, { caption: forwardText });
-          } else {
-            await client.sendMessage(targetJid, forwardText);
+            await client.sendMessage(targetJid, summaryText);
+            console.log(`Match analysis summary sent to ${targetJid}`);
+          } catch (forwardError) {
+            console.error(`Failed to forward matched message natively to ${targetJid}:`, forwardError);
           }
-          console.log(`Match forwarded successfully to ${targetJid}`);
-        } catch (forwardError) {
-          console.error('Failed to forward matched message:', forwardError);
         }
       }
     } catch (error) {

@@ -47,12 +47,21 @@ app.get('/api/chats', async (req, res) => {
 
 // API: Settings
 app.get('/api/settings', (req, res) => {
-  res.json(db.getSettings());
+  const settings = db.getSettings();
+  const isApiKeyConfigured = !!settings.geminiApiKey || !!process.env.GEMINI_API_KEY;
+  res.json({
+    ...settings,
+    isApiKeyConfigured
+  });
 });
 
 app.post('/api/settings', (req, res) => {
   const updated = db.updateSettings(req.body);
-  res.json(updated);
+  const isApiKeyConfigured = !!updated.geminiApiKey || !!process.env.GEMINI_API_KEY;
+  res.json({
+    ...updated,
+    isApiKeyConfigured
+  });
 });
 
 // API: Monitored Chats
@@ -118,10 +127,8 @@ app.post('/api/matches/:id/forward', async (req, res) => {
     }
     
     const settings = db.getSettings();
-    let targetJid = 'self';
-    if (settings.notificationPhone && settings.notificationPhone !== 'self') {
-      targetJid = settings.notificationPhone;
-    }
+    const phoneInput = settings.notificationPhone || 'self';
+    const recipients = phoneInput.split(';').map(p => p.trim()).filter(Boolean);
 
     const details = match.extractedDetails;
     const detailLines = [
@@ -143,7 +150,14 @@ ${detailLines || '• Keine Details extrahiert'}
 
 💡 *Grund:* ${match.reason}`;
 
-    await sendDirectMessage(targetJid, forwardText);
+    for (const recipient of recipients) {
+      try {
+        await sendDirectMessage(recipient, forwardText);
+        console.log(`Manually forwarded match to ${recipient}`);
+      } catch (err) {
+        console.error(`Failed to manually forward match to ${recipient}:`, err);
+      }
+    }
     res.json({ success: true });
   } catch (error) {
     console.error('Manual forward failed:', error);

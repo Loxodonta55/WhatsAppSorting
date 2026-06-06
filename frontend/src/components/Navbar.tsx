@@ -9,6 +9,7 @@ interface NavbarProps {
     user: { name?: string; number?: string } | null;
   };
   filterEnabled: boolean;
+  isApiKeyConfigured: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -16,6 +17,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   whatsappStatus,
   filterEnabled,
+  isApiKeyConfigured,
 }) => {
   const getStatusBadge = () => {
     switch (whatsappStatus.status) {
@@ -96,6 +98,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         <div className="navbar-status">
+          {isApiKeyConfigured ? (
+            <span className="badge badge-success">Gemini Aktiv</span>
+          ) : (
+            <span className="badge badge-danger">Gemini Key fehlt</span>
+          )}
           {filterEnabled ? (
             <span className="badge badge-success">Filter Aktiv</span>
           ) : (

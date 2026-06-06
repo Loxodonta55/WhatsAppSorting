@@ -28,6 +28,9 @@ const testMessages = [
 async function runTests() {
   console.log('🧪 Starting Gemini Classifier Integration Test...');
   
+  // Save original settings so we can restore them later
+  const originalSettings = db.getSettings();
+
   // Set mock criteria in the JSON db first so the classifier loads it
   const testCriteria = 'Ich suche Kleidung für Jungs in Größe 74 und 80. Keine Schuhe, keine Spielzeuge. Nur Angebote mit Abholung in München oder Versand.';
   db.updateSettings({ criteria: testCriteria });
@@ -44,23 +47,29 @@ async function runTests() {
 
   console.log('🔑 API Key found. Connecting to Gemini API...\n');
 
-  for (const msg of testMessages) {
-    console.log(`--------------------------------------------------`);
-    console.log(`📡 Testing: "${msg.label}"`);
-    console.log(`📝 Message: "${msg.text}"`);
-    
-    try {
-      const result = await classifyMessage(msg.text);
-      console.log(`\n🤖 Response:`);
-      console.log(`   - Relevant: ${result.isRelevant ? '✅ YES' : '❌ NO'}`);
-      console.log(`   - Reason:   ${result.reason}`);
-      if (result.extractedDetails) {
-        console.log(`   - Details:  ${JSON.stringify(result.extractedDetails)}`);
+  try {
+    for (const msg of testMessages) {
+      console.log(`--------------------------------------------------`);
+      console.log(`📡 Testing: "${msg.label}"`);
+      console.log(`📝 Message: "${msg.text}"`);
+      
+      try {
+        const result = await classifyMessage(msg.text);
+        console.log(`\n🤖 Response:`);
+        console.log(`   - Relevant: ${result.isRelevant ? '✅ YES' : '❌ NO'}`);
+        console.log(`   - Reason:   ${result.reason}`);
+        if (result.extractedDetails) {
+          console.log(`   - Details:  ${JSON.stringify(result.extractedDetails)}`);
+        }
+      } catch (err) {
+        console.error(`❌ Test failed with error:`, err);
       }
-    } catch (err) {
-      console.error(`❌ Test failed with error:`, err);
+      console.log(`--------------------------------------------------\n`);
     }
-    console.log(`--------------------------------------------------\n`);
+  } finally {
+    // Restore the original search criteria
+    db.updateSettings({ criteria: originalSettings.criteria });
+    console.log('🔄 Restored original search criteria to the database.');
   }
 }
 
