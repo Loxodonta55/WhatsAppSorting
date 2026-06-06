@@ -24,3 +24,8 @@ dist/
 
 # Logs
 *.log
+
+# WhatsApp Auth and DB
+.wwebjs_auth/
+.wwebjs_cache/
+data.json

@@ -1,73 +1,15 @@
 import React, { useState } from 'react';
-import { Trash2, Send, Calendar, User, MessageSquare, Lightbulb, Image as ImageIcon, Check, Loader2 } from 'lucide-react';
+import { Trash2, MessageSquare } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { MatchCard } from './MatchCard';
 
-interface MatchedItem {
-  id: string;
-  messageId: string;
-  timestamp: number;
-  senderName: string;
-  senderNumber: string;
-  groupName: string;
-  groupId: string;
-  text: string;
-  isRelevant: boolean;
-  reason: string;
-  extractedDetails: {
-    item?: string;
-    size?: string;
-    price?: string;
-    location?: string;
-    condition?: string;
-  };
-  imagePath?: string;
-}
-
-interface HistoryFeedProps {
-  matches: MatchedItem[];
-  onDeleteMatch: (id: string) => Promise<void>;
-  onClearAllMatches: () => Promise<void>;
-}
-
-export const HistoryFeed: React.FC<HistoryFeedProps> = ({
-  matches,
-  onDeleteMatch,
-  onClearAllMatches,
-}) => {
-  const [forwardingIds, setForwardingIds] = useState<string[]>([]);
-  const [forwardedSuccessIds, setForwardedSuccessIds] = useState<string[]>([]);
+export const HistoryFeed: React.FC = () => {
+  const { matches, deleteMatch, clearAllMatches } = useStore();
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const handleForward = async (id: string) => {
-    setForwardingIds(prev => [...prev, id]);
-    try {
-      const res = await fetch(`/api/matches/${id}/forward`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        setForwardedSuccessIds(prev => [...prev, id]);
-        setTimeout(() => {
-          setForwardedSuccessIds(prev => prev.filter(x => x !== id));
-        }, 3000);
-      } else {
-        alert('Fehler beim Weiterleiten.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Fehler bei der Kommunikation mit dem Server.');
-    } finally {
-      setForwardingIds(prev => prev.filter(x => x !== id));
-    }
+  const handleClearAll = async () => {
+    if (!window.confirm('Möchtest du wirklich den gesamten Verlauf löschen?')) return;
+    await clearAllMatches();
   };
 
   return (
@@ -80,7 +22,7 @@ export const HistoryFeed: React.FC<HistoryFeedProps> = ({
           </p>
         </div>
         {matches.length > 0 && (
-          <button onClick={onClearAllMatches} className="btn btn-danger btn-clear-all">
+          <button onClick={handleClearAll} className="btn btn-danger btn-clear-all">
             <Trash2 size={16} />
             Verlauf leeren
           </button>
@@ -101,113 +43,12 @@ export const HistoryFeed: React.FC<HistoryFeedProps> = ({
       ) : (
         <div className="matches-list">
           {matches.map((match) => (
-            <article key={match.id} className="match-card card">
-              <div className="match-card-content">
-                {/* Visual Image container if available */}
-                {match.imagePath && (
-                  <div
-                    className="match-image-preview"
-                    onClick={() => setExpandedImage(match.imagePath || null)}
-                  >
-                    <img src={match.imagePath} alt={match.extractedDetails.item || 'Angebot'} />
-                    <div className="zoom-overlay">
-                      <ImageIcon size={20} />
-                      <span>Vergrößern</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="match-details-container">
-                  {/* Meta header */}
-                  <div className="match-meta">
-                    <span className="group-badge badge badge-info">
-                      <MessageSquare size={12} />
-                      {match.groupName}
-                    </span>
-                    <span className="sender-badge">
-                      <User size={12} />
-                      {match.senderName} (+{match.senderNumber})
-                    </span>
-                    <span className="time-badge">
-                      <Calendar size={12} />
-                      {formatTime(match.timestamp)}
-                    </span>
-                  </div>
-
-                  {/* Message body */}
-                  <div className="match-text">
-                    <p className="original-message-text">
-                      {match.text || <em className="no-text-label">[Kein Text in der Nachricht]</em>}
-                    </p>
-                  </div>
-
-                  {/* Structured properties */}
-                  <div className="extracted-tags-list">
-                    {match.extractedDetails.item && (
-                      <span className="detail-tag tag-item">
-                        <strong>Gegenstand:</strong> {match.extractedDetails.item}
-                      </span>
-                    )}
-                    {match.extractedDetails.size && (
-                      <span className="detail-tag tag-size">
-                        <strong>Größe:</strong> {match.extractedDetails.size}
-                      </span>
-                    )}
-                    {match.extractedDetails.price && (
-                      <span className="detail-tag tag-price">
-                        <strong>Preis:</strong> {match.extractedDetails.price}
-                      </span>
-                    )}
-                    {match.extractedDetails.location && (
-                      <span className="detail-tag tag-location">
-                        <strong>Ort/Versand:</strong> {match.extractedDetails.location}
-                      </span>
-                    )}
-                    {match.extractedDetails.condition && (
-                      <span className="detail-tag tag-condition">
-                        <strong>Zustand:</strong> {match.extractedDetails.condition}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* AI Explanation reasoning */}
-                  <div className="reasoning-box">
-                    <Lightbulb size={16} className="reasoning-icon" />
-                    <div className="reasoning-text">
-                      <strong>KI-Begründung:</strong>
-                      <p>{match.reason}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Footer */}
-              <div className="match-card-actions">
-                <button
-                  onClick={() => handleForward(match.id)}
-                  disabled={forwardingIds.includes(match.id)}
-                  className={`btn btn-secondary action-btn-forward ${
-                    forwardedSuccessIds.includes(match.id) ? 'btn-success-green' : ''
-                  }`}
-                >
-                  {forwardingIds.includes(match.id) ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : forwardedSuccessIds.includes(match.id) ? (
-                    <Check size={16} />
-                  ) : (
-                    <Send size={16} />
-                  )}
-                  {forwardedSuccessIds.includes(match.id) ? 'Weitergeleitet!' : 'Erneut weiterleiten'}
-                </button>
-                <button
-                  onClick={() => onDeleteMatch(match.id)}
-                  className="btn btn-danger action-btn-delete"
-                >
-                  <Trash2 size={16} />
-                  Entfernen
-                </button>
-              </div>
-            </article>
+            <MatchCard 
+              key={match.id} 
+              match={match} 
+              onDeleteMatch={deleteMatch} 
+              setExpandedImage={setExpandedImage} 
+            />
           ))}
         </div>
       )}

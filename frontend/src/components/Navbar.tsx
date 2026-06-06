@@ -1,24 +1,19 @@
 import React from 'react';
 import { MessageSquare, Settings, Link, CheckSquare, Sparkles } from 'lucide-react';
+import { useStore } from '../store/useStore';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  whatsappStatus: {
-    status: 'DISCONNECTED' | 'CONNECTING' | 'QR_READY' | 'CONNECTED';
-    user: { name?: string; number?: string } | null;
-  };
-  filterEnabled: boolean;
-  isApiKeyConfigured: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  whatsappStatus,
-  filterEnabled,
-  isApiKeyConfigured,
 }) => {
+  const { whatsappStatus, settings } = useStore();
+  const filterEnabled = settings.filterEnabled;
+  const isApiKeyConfigured = !!settings.isApiKeyConfigured;
   const getStatusBadge = () => {
     switch (whatsappStatus.status) {
       case 'CONNECTED':

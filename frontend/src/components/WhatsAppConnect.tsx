@@ -1,17 +1,11 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { CheckCircle2, ShieldAlert, Smartphone, Loader2 } from 'lucide-react';
+import { useStore } from '../store/useStore';
 
-interface WhatsAppConnectProps {
-  whatsappStatus: {
-    status: 'DISCONNECTED' | 'CONNECTING' | 'QR_READY' | 'CONNECTED';
-    qr: string;
-    user: { name?: string; number?: string } | null;
-    error?: string;
-  };
-}
+export const WhatsAppConnect: React.FC = () => {
+  const whatsappStatus = useStore((state) => state.whatsappStatus);
 
-export const WhatsAppConnect: React.FC<WhatsAppConnectProps> = ({ whatsappStatus }) => {
   return (
     <div className="connect-wrapper">
       <div className="card card-glowing">

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, RefreshCw, CheckCircle, ShieldAlert, Loader2, Save } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { MonitoredChat } from '../types';
 
 interface GroupChat {
   id: string;
@@ -7,24 +9,8 @@ interface GroupChat {
   unreadCount?: number;
 }
 
-interface MonitoredChat {
-  id: string;
-  name: string;
-}
-
-interface MonitoredChatsProps {
-  whatsappStatus: {
-    status: 'DISCONNECTED' | 'CONNECTING' | 'QR_READY' | 'CONNECTED';
-  };
-  monitoredChats: MonitoredChat[];
-  onSaveMonitoredChats: (chats: MonitoredChat[]) => Promise<boolean>;
-}
-
-export const MonitoredChats: React.FC<MonitoredChatsProps> = ({
-  whatsappStatus,
-  monitoredChats,
-  onSaveMonitoredChats,
-}) => {
+export const MonitoredChats: React.FC = () => {
+  const { whatsappStatus, monitoredChats, saveMonitoredChats } = useStore();
   const [allGroups, setAllGroups] = useState<GroupChat[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,7 +72,7 @@ export const MonitoredChats: React.FC<MonitoredChatsProps> = ({
     });
 
     try {
-      const success = await onSaveMonitoredChats(chatsToSave);
+      const success = await saveMonitoredChats(chatsToSave);
       if (success) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
